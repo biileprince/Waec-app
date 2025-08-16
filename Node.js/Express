@@ -1,0 +1,12 @@
+project/
+ server/
+config/
+ db.js
+ controllers/
+  models/
+     routes/
+        services/
+              utils/
+               server.js
+client/
+ package.json

@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>WAEC Smart Question Generator</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --secondary: #3498db;
+            --danger: #e74c3c;
+        }
+        body {
+            font-family: 'Arial', sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        select, button, input {
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button { transition: all 0.3s; cursor: pointer; }
+        .primary { background: var(--primary); color: white; }
+        .secondary { background: var(--secondary); color: white; }
+        .danger { background: var(--danger); color: white; }
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+            margin: 15px 0;
+        }
+        .hidden { display: none; }
+        .progress-bar {
+            height: 20px;
+            background: #eee;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: var(--secondary);
+            transition: width 0.3s;
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-section">
+        <input type="email" id="email" placeholder="Email" class="hidden">
+        <input type="password" id="password" placeholder="Password" class="hidden">
+        <button onclick="toggleAuth()" id="authBtn">Login</button>
+    </div>
+
+    <h1>🎓 WAEC Smart Question Generator</h1>
+    <div id="updateAlert" class="card hidden">🔄 New Curriculum Update Available!</div>
+
+    <div class="card">
+        <div class="grid">
+            <select id="program" class="primary">
+                <option value="">Select Program</option>
+                <option value="science">Science</option>
+                <option value="arts">Arts</option>
+                <option value="business">Business</option>
+            </select>
+            
+            <select id="level" class="primary">
+                <option value="">Select Level</option>
+                <option value="shs1">SHS 1</option>
+                <option value="shs2">SHS 2</option>
+                <option value="shs3">SHS 3</option>
+            </select>
+
+
+            <select id="subject" class="primary">
+                <option value="">Select Subject</option>
+            </select>
+
+            <select id="year" class="primary">
+                <option value="">Select Year</option>
+            </select>
+        </div>
+
+        <div class="grid">
+            <button onclick="generateQuestions()" class="secondary">Generate Questions</button>
+            <button onclick="exportPDF()" class="danger">Export PDF</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>📝 Generated Questions</h3>
+        <div id="questions"></div>
+        <div class="progress-bar">
+            <div class="progress-fill" id="progress" style="width: 0%"></div>
+        </div>
+    </div>
+
+    <script>
+        // Simulated Database
+        const mockDB = {
+            users: [{ email: "admin@waec.com", password: "admin123", progress: {} }],
+            questions: {
+                "mathematics-2023-shs1": [
+                    { question: "Solve 2x + 5 = 15", answer: "x = 5", explanation: "Subtract 5 from both sides..." },
+                    { question: "Calculate area of circle with r=7cm", answer: "154cm²", explanation: "Use formula πr²" }
+                ],
+                "english-2022-shs2": [
+                    { question: "Define noun", answer: "Name of person, place or thing", explanation: "Basic naming word" }
+                ]
+            },
+            curriculum: {
+                version: "2024.1",
+                subjects: {
+                    science: ["Mathematics", "Physics", "Chemistry"],
+                    arts: ["English", "History", "Literature"],
+                    business: ["Accounting", "Economics", "Commerce"]
+                }
+            }
+        };
+
+        // Authentication System
+        let currentUser = null;
+        function toggleAuth() {
+            const authSection = document.querySelector('.auth-section');
+            authSection.querySelectorAll('input').forEach(i => i.classList.toggle('hidden'));
+            document.getElementById('authBtn').textContent = currentUser ? 'Logout' : 'Login';
+            if(currentUser) logout();
+        }
+
+        function login() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const user = mockDB.users.find(u => u.email === email && u.password === password);
+            
+            if(user) {
+                currentUser = user;
+                localStorage.setItem('userProgress', JSON.stringify(user.progress));
+                toggleAuth();
+                updateProgressBar();
+            }
+        }
+
+        function logout() {
+            currentUser = null;
+            localStorage.removeItem('userProgress');
+            toggleAuth();
+        }
+
+        // Curriculum Manager
+        function checkCurriculumUpdates() {
+            const savedVersion = localStorage.getItem('curriculumVersion');
+            if(savedVersion !== mockDB.curriculum.version) {
+                document.getElementById('updateAlert').classList.remove('hidden');
+                localStorage.setItem('curriculumVersion', mockDB.curriculum.version);
+            }
+        }
+
+        // Question Engine
+        function generateQuestions() {
+            if(!currentUser) return alert('Please login first');
+            
+            const program = document.getElementById('program').value;
+            const level = document.getElementById('level').value;
+            const subject = document.getElementById('subject').value;
+            const year = document.getElementById('year').value;
+
+            const key = `${subject}-${year}-${level}`.toLowerCase();
+            const questions = mockDB.questions[key] || [{ question: "No questions found", answer: "" }];
+
+            displayQuestions(questions);
+            updateProgress(0.3); // Simulated progress
+        }
+
+        function displayQuestions(questions) {
+            const container = document.getElementById('questions');
+            container.innerHTML = questions.map((q, i) => `
+                <div class="question">
+                    <h4>Question ${i+1}: ${q.question}</h4>
+                    <button onclick="showAnswer(this)">Show Answer</button>
+                    <p class="hidden">${q.answer}<br><small>${q.explanation}</small></p>
+                </div>
+            `).join('');
+        }
+
+        function showAnswer(btn) {
+            const answer = btn.nextElementSibling;
+            answer.classList.toggle('hidden');
+            updateProgress(0.1);
+        }
+
+        // Progress System
+        function updateProgress(amount) {
+            const progressBar = document.getElementById('progress');
+            const currentWidth = parseFloat(progressBar.style.width) || 0;
+            const newWidth = Math.min(currentWidth + (amount * 100), 100);
+            progressBar.style.width = `${newWidth}%`;
+        }
+
+        function updateProgressBar() {
+            const savedProgress = localStorage.getItem('userProgress');
+            if(savedProgress) {
+                const progress = JSON.parse(savedProgress);
+                // Implement actual progress tracking logic
+            }
+        }
+
+        // PDF Export (Simulated)
+        function exportPDF() {
+            const questions = document.getElementById('questions').innerText;
+            const newWindow = window.open();
+            newWindow.document.write(`<pre>${questions}</pre>`);
+            newWindow.print();
+        }
+
+        // Dynamic Selectors
+        document.getElementById('program').addEventListener('change', function() {
+            const subjects = mockDB.curriculum.subjects[this.value] || [];
+            const subjectSelect = document.getElementById('subject');
+            subjectSelect.innerHTML = '<option value="">Select Subject</option>';
+            subjects.forEach(subject => {
+                subjectSelect.appendChild(new Option(subject, subject.toLowerCase()));
+            });
+        });
+
+        // Year Selector
+        (function initYearSelector() {
+            const yearSelect = document.getElementById('year');
+            const currentYear = new Date().getFullYear();
+            for(let year = currentYear; year >= 2000; year--) {
+                yearSelect.appendChild(new Option(year, year));
+            }
+        })();
+
+        // Initial Setup
+        checkCurriculumUpdates();
+        setInterval(checkCurriculumUpdates, 5000);
+        document.querySelector('.auth-section').addEventListener('submit', e => e.preventDefault());
+    </script>
+    
+</body>
+</html>
